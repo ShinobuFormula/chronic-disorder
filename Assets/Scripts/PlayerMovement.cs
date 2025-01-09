@@ -1,49 +1,117 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class PlayerMovement : MonoBehaviour
 {
-    public CharacterController controller;
+    public Rigidbody rb;
+    public float rbDrag = 2;
+    public Transform orientation;
 
     public float speed = 12f;
-    public float gravity = -9.81f * 2;
-    public float jumpHeight = 3f;
+    public float jumpHeight = 8f;
+    public float airMultiplier = 0.4f;
+
 
     public Transform groundCheck;
     public float groundDistance = 0.4f;
     public LayerMask groundMask;
 
-    Vector3 velocity;
 
+    public bool running = false;
     bool isGrounded;
 
-    // Update is called once per frame
-    void Update()
-    {
-        //checking if we hit the ground to reset our falling velocity, otherwise we will fall faster the next time
-        isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
+    private float x;
+    private float z;
 
-        if (isGrounded && velocity.y < 0)
+    public float dashForce = 50;
+    public float upwardDashForce = 0;
+    public float dashSpeed = 24f;
+
+    private void Start()
+    {
+        rb.freezeRotation = true;
+    }
+    private void Update()
+    {
+        isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
+        if(isGrounded)
         {
-            velocity.y = -2f;
+            rb.drag = rbDrag;
+        } else
+        {
+            rb.drag = 0;
         }
 
-        float x = Input.GetAxis("Horizontal");
-        float z = Input.GetAxis("Vertical");
+        SpeedControl();
+    }
+    private void FixedUpdate()
+    {
+        if(!isGrounded)
+        {
+            //descend faster that you jumped
+            rb.velocity = new Vector3(rb.velocity.x, rb.velocity.y - 0.1f, rb.velocity.z);
+        }
+        Move();
+    }
 
-        //right is the red Axis, foward is the blue axis
-        Vector3 move = transform.right * x + transform.forward * z;
+    void OnMove(InputValue moveVector)
+    {
+        x = moveVector.Get<Vector2>().x;
+        z = moveVector.Get<Vector2>().y;
+    }
 
-        controller.Move(move * speed * Time.deltaTime);
+    void Move()
+    {
+        Vector3 move = orientation.right * x + orientation.forward * z;
+        
+        if(isGrounded) rb.AddForce(move.normalized * speed * 10f, ForceMode.Force);
+        else rb.AddForce(move.normalized * speed * 10f * airMultiplier, ForceMode.Force);
+    }
 
-        //check if the player is on the ground so he can jump
-        if (Input.GetButtonDown("Jump") && isGrounded)
+    void OnJump() {
+        if (isGrounded)
         {
             //the equation for jumping
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
+            rb.AddForce(transform.up * jumpHeight, ForceMode.Impulse);
         }
-
-        velocity.y += gravity * Time.deltaTime;
-
-        controller.Move(velocity * Time.deltaTime);
     }
+
+    void OnSprint()
+    {
+        if(isGrounded)
+        {
+            if(!running)
+            {
+                speed *= 1.5f;
+                running = true;
+            } else if(running) {
+                speed /= 1.5f;
+                running = false;
+            }
+        }
+    }
+
+    void OnDash()
+    {
+        Vector3 dash = orientation.forward * dashForce + orientation.up * upwardDashForce;
+        dash.y = 0;
+        rb.AddForce(dash, ForceMode.Impulse);
+        //speed = dashSpeed;
+        //controller.Move(dash);
+    }
+
+
+    private void SpeedControl()
+    {
+        Vector3 flatVelocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
+        if(flatVelocity.magnitude > speed)
+        {
+            Vector3 limitedVel = flatVelocity.normalized * speed;
+            rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
+        }
+    }
+
 }
