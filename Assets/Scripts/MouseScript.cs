@@ -1,6 +1,5 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
-
+using DG.Tweening;
 public class MouseMovement : MonoBehaviour
 {
 
@@ -34,5 +33,10 @@ public class MouseMovement : MonoBehaviour
         //applying both rotations
         transform.rotation = Quaternion.Euler(xRotation, yRotation, 0f);
         orientation.rotation = Quaternion.Euler(0, yRotation, 0);
+    }
+
+    public void DoFov(float endValue)
+    {
+        GetComponent<Camera>().DOFieldOfView(endValue, 0.25f);
     }
 }
