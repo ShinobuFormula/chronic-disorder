@@ -60,7 +60,7 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Blink",
+                    "name": "Grapple",
                     "type": "Button",
                     "id": "70a6b6b7-32f4-4235-a6d2-44472d875a03",
                     "expectedControlType": "Button",
@@ -341,7 +341,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Blink",
+                    "action": "Grapple",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

@@ -11,7 +11,7 @@ public class PlayerMovement : MonoBehaviour
 
     //camera
     public MouseMovement cam;
-    public float dashFov;
+    public float dashFov = 95f;
 
     //walk, run & jump params
     public float walkSpeed = 12f;
@@ -52,9 +52,8 @@ public class PlayerMovement : MonoBehaviour
     public float dashSpeedChangeFactor = 50f;
 
     //grab params
-    public Transform ledgeTransform;
     public float grabForce = 25;
-    private Vector3 directionToLedge;
+    public bool tookOff = false;
 
     public MovementState state;
     public enum MovementState
@@ -85,12 +84,10 @@ public class PlayerMovement : MonoBehaviour
         {
             rb.drag = 0;
         }
-
-        if (state == MovementState.grabbing)
+        if (state == MovementState.grabbing && isGrounded && tookOff)
         {
-            //CHECK IF WE ARE NEAR GRABBING POINT
-            //isGrounded = Physics.CheckSphere(transform.position, 5, groundMask);
-
+            grabbing = false;
+            tookOff = false;
         }
 
         SpeedControl();
@@ -100,7 +97,7 @@ public class PlayerMovement : MonoBehaviour
         if (!isGrounded && state != MovementState.grabbing)
         {
             //descend faster that you jumped
-            rb.velocity = new Vector3(rb.velocity.x, rb.velocity.y - 0.1f, rb.velocity.z);
+            rb.velocity = new Vector3(rb.velocity.x, rb.velocity.y - 0.2f, rb.velocity.z);
         }
         Move();
     }
@@ -113,6 +110,7 @@ public class PlayerMovement : MonoBehaviour
 
     void Move()
     {
+        if (state == MovementState.grabbing) return;
         Vector3 move = orientation.right * x + orientation.forward * z;
 
         if (isGrounded) rb.AddForce(move.normalized * speed * 10f, ForceMode.Force);
@@ -185,19 +183,6 @@ public class PlayerMovement : MonoBehaviour
         return direction.normalized;
     }
 
-
-    void OnBlink()
-    {
-        grabbing = true;
-
-        Vector3 lowestPoint = new Vector3(transform.position.x, transform.position.y - 1f, transform.position.z);
-
-        float grapplePointRelativeYPos = ledgeTransform.position.y - lowestPoint.y;
-        float highestPointOnArc = grapplePointRelativeYPos + 2;
-
-        if (grapplePointRelativeYPos < 0) highestPointOnArc = 2;
-        rb.velocity = CalculateJumpVelocity(transform.position, ledgeTransform.position, highestPointOnArc);
-    }
     private void SpeedControl()
     {
         if(!grabbing && !dashing)
@@ -224,9 +209,7 @@ public class PlayerMovement : MonoBehaviour
         else if (grabbing)
         {
             state = MovementState.grabbing;
-            directionToLedge = ledgeTransform.position - transform.position;
         }
-
         // Mode - Crouching
         else if (crouching)
         {
@@ -258,6 +241,7 @@ public class PlayerMovement : MonoBehaviour
             else
                 desiredMoveSpeed = runSpeed;
         }
+
 
         bool desiredMoveSpeedHasChanged = desiredMoveSpeed != lastDesiredMoveSpeed;
         if (lastState == MovementState.dashing) keepMomentum = true;
@@ -302,20 +286,4 @@ public class PlayerMovement : MonoBehaviour
         speedChangeFactor = 1f;
         keepMomentum = false;
     }
-
-
-    private Vector3 CalculateJumpVelocity(Vector3 startPoint, Vector3 endPoint, float trajectoryHeight)
-    {
-        float gravity = Physics.gravity.y;
-        float displacementY = endPoint.y - startPoint.y;
-        Vector3 displacementXZ = new Vector3(endPoint.x - startPoint.x, 0f, endPoint.z - startPoint.z);
-
-        Vector3 velocityY = Vector3.up * Mathf.Sqrt(-2 * gravity * trajectoryHeight);
-        Vector3 velocityXZ = displacementXZ / (Mathf.Sqrt(-2 * trajectoryHeight / gravity)
-            + Mathf.Sqrt(2 * (displacementY - trajectoryHeight) / gravity));
-
-        return velocityXZ + velocityY;
-    }
-
-
 }
