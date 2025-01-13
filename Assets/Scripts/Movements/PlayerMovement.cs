@@ -1,7 +1,6 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using static UnityEditorInternal.VersionControl.ListControl;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -39,7 +38,7 @@ public class PlayerMovement : MonoBehaviour
     public bool crouching = false;
     public bool dashing = false;
     public bool grabbing = false;
-    bool isGrounded;
+    public bool isGrounded;
 
     private float x;
     private float z;
@@ -111,6 +110,7 @@ public class PlayerMovement : MonoBehaviour
     void Move()
     {
         if (state == MovementState.grabbing) return;
+
         Vector3 move = orientation.right * x + orientation.forward * z;
 
         if (isGrounded) rb.AddForce(move.normalized * speed * 10f, ForceMode.Force);
@@ -121,7 +121,8 @@ public class PlayerMovement : MonoBehaviour
     {
         if (isGrounded)
         {
-            //the equation for jumping
+            running = false;
+            //reset rb velocity before jump
             rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
 
             rb.AddForce(transform.up * jumpHeight, ForceMode.Impulse);

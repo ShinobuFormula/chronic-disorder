@@ -33,6 +33,7 @@ public class MouseMovement : MonoBehaviour
         //applying both rotations
         transform.rotation = Quaternion.Euler(xRotation, yRotation, 0f);
         orientation.rotation = Quaternion.Euler(0, yRotation, 0);
+        Debug.Log(orientation.rotation);
     }
 
     public void DoFov(float endValue)

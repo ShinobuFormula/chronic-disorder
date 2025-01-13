@@ -1,6 +1,5 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+
 
 public class Grappling : MonoBehaviour
 {
@@ -8,18 +7,13 @@ public class Grappling : MonoBehaviour
     public Rigidbody rb;
     public PlayerMovement playerMovement;
     public Camera mainCamera;
-    
-    //detect nearest grapable
+
+    public float sphereRadius;
     public float maxDetectionDistance;
     public LayerMask detectionLayer;
-    private GameObject nearestGrapable;
+    public LayerMask obstacleLayer;
+    private GameObject savedGrapable;
 
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
     void Update()
     {
         ShootSphereCast();
@@ -31,54 +25,56 @@ public class Grappling : MonoBehaviour
         Vector3 screenCenter = new Vector3(Screen.width / 2f, Screen.height / 2f, 0f);
         Ray ray = mainCamera.ScreenPointToRay(screenCenter);
 
-        RaycastHit[] hits = Physics.SphereCastAll(ray, 10, maxDetectionDistance, detectionLayer);
+        RaycastHit hit;
 
-        if (hits.Length > 0)
+        Physics.SphereCast(ray, sphereRadius, out hit, maxDetectionDistance, detectionLayer);
+
+        if (hit.collider != null)
         {
-            // Trouver l'objet le plus proche
-            GameObject closestObject = null;
-            float closestDistance = Mathf.Infinity;
+            RaycastHit obstacleHit;
+            GameObject closestObject = hit.collider.gameObject;
 
-            foreach (RaycastHit hit in hits)
-            {
-                float distance = Vector3.Distance(mainCamera.transform.position, hit.point);
-                if (distance < closestDistance)
-                {
-                    closestDistance = distance;
-                    closestObject = hit.collider.gameObject;
-                }
-            }
+            Vector3 directionToTarget =  closestObject.transform.position - Camera.main.transform.position;
 
-            if (closestObject != null)
-            {
-                if(nearestGrapable != closestObject)
+            Physics.Raycast(Camera.main.transform.position, directionToTarget, out obstacleHit, directionToTarget.magnitude, obstacleLayer);
+
+            if (obstacleHit.collider == null) {
+                closestObject.GetComponent<MeshRenderer>().material.color = Color.red;
+                if (savedGrapable != closestObject)
                 {
-                    if(nearestGrapable != null) nearestGrapable.GetComponent<Ledge>().UnSelect();
-                    Debug.Log("Objet le plus proche : " + closestObject.name);
+                    if(savedGrapable != null) savedGrapable.GetComponent<Ledge>().UnSelect();
                     closestObject.GetComponent<Ledge>().Select();
-                    nearestGrapable = closestObject;
+                    savedGrapable = closestObject;
                 }
+            } else
+            {
+                clearSavedGrapable();
             }
         } else
         {
-            if (nearestGrapable != null) nearestGrapable.GetComponent<Ledge>().UnSelect();
-            nearestGrapable = null;
+            clearSavedGrapable();
         }
+    }
+
+    void clearSavedGrapable()
+    {
+        if (savedGrapable != null) savedGrapable.GetComponent<Ledge>().UnSelect();
+        savedGrapable = null;
     }
 
     void OnGrapple()
     {
-        if(nearestGrapable != null)
+        if(savedGrapable != null)
         {
             playerMovement.grabbing = true;
 
             Vector3 lowestPoint = new Vector3(transform.position.x, transform.position.y - 1f, transform.position.z);
 
-            float grapplePointRelativeYPos = nearestGrapable.transform.position.y - lowestPoint.y;
-            float highestPointOnArc = grapplePointRelativeYPos + 2;
+            float grapplePointRelativeYPos = savedGrapable.transform.position.y - lowestPoint.y;
+            float highestPointOnArc = grapplePointRelativeYPos + 0.5f;
 
             if (grapplePointRelativeYPos < 0) highestPointOnArc = 2;
-            rb.velocity = CalculateJumpVelocity(transform.position, nearestGrapable.transform.position, highestPointOnArc);
+            rb.velocity = CalculateJumpVelocity(transform.position, savedGrapable.transform.position, highestPointOnArc);
 
             Invoke(nameof(ResetGrapple), 0.35f);
         }
@@ -88,6 +84,12 @@ public class Grappling : MonoBehaviour
     void ResetGrapple()
     {
         playerMovement.tookOff = true;
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        playerMovement.grabbing = false;
+        playerMovement.tookOff = false;
     }
 
     private Vector3 CalculateJumpVelocity(Vector3 startPoint, Vector3 endPoint, float trajectoryHeight)
